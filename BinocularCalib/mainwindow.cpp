@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
 const char* imageName_L = "1.jpg"; // 用于检测深度的图像
@@ -75,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-  //  qDebug()<< QStringLiteral("张三");
+    qDebug()<< QString("张三");
 
     m_bSaveImage = false;
 
@@ -406,28 +406,25 @@ void MainWindow::on_calibButton_clicked()
     singleCameraCalibrate(imageList_L, singleCalibrate_result_L, objectPoints_L, corners_seq_L, cameraMatrix_L,
         distCoeffs_L, imageSize, patternSize, chessboardSize);
 
-    qDebug() << QString("left camera calib done")<<endl;
+    qDebug() << QString("已完成左相机的标定")<<endl;
 
     singleCameraCalibrate(imageList_R, singleCalibrate_result_R, objectPoints_R, corners_seq_R, cameraMatrix_R,
         distCoeffs_R, imageSize, patternSize, chessboardSize);
-    qDebug() << QString::fromLocal8Bit("right camera calib done")<<endl;//解决中文乱码问题
+    qDebug() << QString("已完成右相机的标定")<<endl;//解决中文乱码问题
  //   cout << "已完成右相机的标定!" << endl;
     stereoCalibrate(stereoCalibrate_result_L, objectPoints_L, corners_seq_L, corners_seq_R, cameraMatrix_L, distCoeffs_L,
         cameraMatrix_R, distCoeffs_R, imageSize, R, T, E, F);
-     qDebug() << QString("camera stereoCalib done")<<endl;
-  //  cout << "相机立体标定完成！" << endl;
+     qDebug() << QString("相机立体标定完成！")<<endl;
 
     SaveParameters();//保存参数
-
     //      ReadParameters();//读取参数
 
     validRoi[0], validRoi[1] = stereoRectification(stereoRectifyParams, cameraMatrix_L, distCoeffs_L, cameraMatrix_R, distCoeffs_R,
-    imageSize, R, T, R1, R2, P1, P2, Q, mapl1, mapl2, mapr1, mapr2);
-     qDebug() << QString("stereo Rectification done")<<endl;
+        imageSize, R, T, R1, R2, P1, P2, Q, mapl1, mapl2, mapr1, mapr2);
+     qDebug() << QString("已创建图像重投影映射表")<<endl;
 
     computeDisparityImage(imageName_L, imageName_R, img1_rectified, img2_rectified, mapl1, mapl2, mapr1, mapr2, validRoi, disparity);
-    qDebug() << QString("Disparity image done")<<endl;
- //   cout << "视差图建立完成！" << endl;
+    qDebug() << QString("视差图建立完成！")<<endl;
     // 从三维投影获得深度映射
     reprojectImageTo3D(disparity, result3DImage, Q);
     imshow("disparity", disparity);
