@@ -75,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    qDebug()<< QString("张三");
+ //   qDebug()<< QString("张三");
 
     m_bSaveImage = false;
 
@@ -164,8 +164,9 @@ bool singleCameraCalibrate(const char* imageList, const char* singleCalibrateRes
     while (getline(imageStore, imageName)) // 读取txt的每一行（每一行存放了一张标定图片的名称）
     {
         n_boards++;
-        Mat imageInput = imread(imageName);
-        cvtColor(imageInput, imageInput, CV_RGB2GRAY);
+        Mat imageInput = imread(imageName,CV_LOAD_IMAGE_COLOR);
+        Mat grayImage;
+        cvtColor(imageInput, grayImage, CV_RGB2GRAY);
         imageSize.width = imageInput.cols; // 获取图片的宽度
         imageSize.height = imageInput.rows; // 获取图片的高度
         // 查找标定板的角点
@@ -174,15 +175,16 @@ bool singleCameraCalibrate(const char* imageList, const char* singleCalibrateRes
         if (found) // 当所有的角点都被找到
         {
             TermCriteria criteria = TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 40, 0.001); // 终止标准，迭代40次或者达到0.001的像素精度
-            cornerSubPix(imageInput, corners, Size(11, 11), Size(-1, -1), criteria);// 由于我们的图像只存较大，将搜索窗口调大一些，（11， 11）为真实窗口的一半，真实大小为（11*2+1， 11*2+1）--（23， 23）
+            cornerSubPix(grayImage, corners, Size(11, 11), Size(-1, -1), criteria);// 由于我们的图像只存较大，将搜索窗口调大一些，（11， 11）为真实窗口的一半，真实大小为（11*2+1， 11*2+1）--（23， 23）
             corners_seq.push_back(corners); // 存入角点序列
             // 绘制角点
-            //drawChessboardCorners(imageInput, patternSize, corners, true);
-            //imshow("cornersframe", imageInput);
-            //waitKey(500); // 暂停0.5s
+            drawChessboardCorners(imageInput, patternSize, corners, true);
+
+            imshow("cornersframe", imageInput);
+            waitKey(50); // 暂停0.5s
         }
     }
-    //destroyWindow("cornersframe");
+//    destroyWindow("cornersframe");
     // 进行相机标定
     // 计算角点对应的三维坐标
     int pic, i, j;
@@ -206,7 +208,25 @@ bool singleCameraCalibrate(const char* imageList, const char* singleCalibrateRes
     // 执行标定程序
     vector<Mat> rvec; // 旋转向量
     vector<Mat> tvec; // 平移向量
-    calibrateCamera(objectPoints, corners_seq, imageSize, cameraMatrix, distCoeffs, rvec, tvec, 0);
+    Mat rotation_matrix;//旋转矩阵
+    calibrateCamera(objectPoints, corners_seq, imageSize, cameraMatrix, distCoeffs, rvec, tvec, 0);//单目标定
+
+    // 保存标定结果
+    for(i = 0; i< rvec.size();i++)
+    {
+        resultStore<<"第"<<i+1<<"幅图像的旋转向量："<<endl;
+        resultStore << rvec[i] << endl << endl;
+
+        /* 将旋转向量转换为相对应的旋转矩阵 */
+        Rodrigues(rvec[i],rotation_matrix);
+        resultStore<<"第"<<i+1<<"幅图像的旋转矩阵："<<endl;
+        resultStore<<rotation_matrix<<endl;
+
+
+        resultStore<<"第"<<i+1<<"幅图像的平移向量："<<endl;
+        resultStore << tvec[i] << endl << endl;
+    }
+
     // 保存标定结果
     resultStore << "相机内参数矩阵" << endl;
     resultStore << cameraMatrix << endl << endl;
@@ -411,13 +431,13 @@ void MainWindow::on_calibButton_clicked()
     singleCameraCalibrate(imageList_R, singleCalibrate_result_R, objectPoints_R, corners_seq_R, cameraMatrix_R,
         distCoeffs_R, imageSize, patternSize, chessboardSize);
     qDebug() << QString("已完成右相机的标定")<<endl;//解决中文乱码问题
- //   cout << "已完成右相机的标定!" << endl;
+
     stereoCalibrate(stereoCalibrate_result_L, objectPoints_L, corners_seq_L, corners_seq_R, cameraMatrix_L, distCoeffs_L,
         cameraMatrix_R, distCoeffs_R, imageSize, R, T, E, F);
      qDebug() << QString("相机立体标定完成！")<<endl;
 
     SaveParameters();//保存参数
-    //      ReadParameters();//读取参数
+//     ReadParameters();//读取参数
 
     validRoi[0], validRoi[1] = stereoRectification(stereoRectifyParams, cameraMatrix_L, distCoeffs_L, cameraMatrix_R, distCoeffs_R,
         imageSize, R, T, R1, R2, P1, P2, Q, mapl1, mapl2, mapr1, mapr2);
@@ -427,5 +447,6 @@ void MainWindow::on_calibButton_clicked()
     qDebug() << QString("视差图建立完成！")<<endl;
     // 从三维投影获得深度映射
     reprojectImageTo3D(disparity, result3DImage, Q);
+    cout << disparity << endl;
     imshow("disparity", disparity);
  }
